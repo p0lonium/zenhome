@@ -1,0 +1,17 @@
+name: Compiler ZenHome
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk aapt android-sdk-platform-23 dalvik-exchange apksigner zipalign
+      - run: bash zenhome-github/source/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZenHome-apk
+          path: zenhome-github/source/out/ZenHome.apk
