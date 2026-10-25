@@ -1,0 +1,6 @@
+1. github.com > New repository (nom : zenhome, Public) > Create.
+2. "uploading an existing file" > glisser TOUT le contenu de ce dossier
+   (dont le dossier .github et le dossier source) > Commit changes.
+3. Onglet Actions > attendre la coche verte (3-5 min).
+4. Clic sur la ligne > en bas "ZenHome-apk" > telecharger > dezipper.
+5. Copier ZenHome.apk dans ecran-accueil/ du kit, puis LANCER.bat option 3.
