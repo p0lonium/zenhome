@@ -17,8 +17,10 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 
 /**
@@ -37,13 +39,14 @@ public class Sports {
         public String homeScore = "", awayScore = "", homeLogo = "", awayLogo = "";
         public int homeColor = 0xFF0C2A5A, awayColor = 0xFF1B3F94;
         public int interest;
+        public String id = "";
     }
 
     /** Chemins ESPN, libelles, couleur du point dans la liste, poids dans le choix de l'affiche. */
-    public static final String[] PATHS = {"soccer/uefa.champions", "soccer/fra.1", "soccer/eng.1", "soccer/uefa.europa", "basketball/nba"};
-    public static final String[] LABELS = {"LIGUE DES CHAMPIONS", "LIGUE 1", "PREMIER LEAGUE", "EUROPA LEAGUE", "NBA"};
-    public static final int[] DOTS = {0xFF5DD6B0, 0xFF7CC4FF, 0xFFB7A3FF, 0xFFFFD166, 0xFFFFAB5E};
-    static final int[] WEIGHT = {40, 35, 30, 25, 20};
+    public static final String[] PATHS = {"soccer/uefa.champions", "soccer/fra.1", "soccer/eng.1", "soccer/uefa.europa", "basketball/nba", "soccer/esp.1"};
+    public static final String[] LABELS = {"LIGUE DES CHAMPIONS", "LIGUE 1", "PREMIER LEAGUE", "EUROPA LEAGUE", "NBA", "LA LIGA"};
+    public static final int[] DOTS = {0xFF5DD6B0, 0xFF7CC4FF, 0xFFB7A3FF, 0xFFFFD166, 0xFFFFAB5E, 0xFFFF8FA3};
+    static final int[] WEIGHT = {40, 35, 30, 25, 20, 32};
     /** Gros clubs : petit bonus pour l'affiche quand aucune equipe favorite n'est definie. */
     static final String[] BIG = {"paris saint", "marseille", "lyon", "monaco", "lille", "liverpool", "manchester", "arsenal",
             "chelsea", "tottenham", "real madrid", "barcelona", "bayern", "lakers", "warriors", "celtics", "knicks", "spurs"};
@@ -51,42 +54,62 @@ public class Sports {
     public static String lastErr = "";
 
     /** @return la liste triee par date, ou null si AUCUN championnat n'a repondu (hors ligne). */
-    public static List<Game> fetch(List<String> favs) {
-        List<Game> out = new ArrayList<Game>();
-        long now = System.currentTimeMillis();
-        SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd", Locale.US);
-        df.setTimeZone(TimeZone.getTimeZone("UTC"));
-        String range = df.format(new Date(now - 86400000L)) + "-" + df.format(new Date(now + 7 * 86400000L));
-        int ok = 0;
+    public static List<Game> fetch(final List<String> favs) {
+        final List<Game> out = new ArrayList<Game>();
+        final Set<String> seen = new HashSet<String>();
+        final int[] ok = {0};
+        final long now = System.currentTimeMillis();
+        Thread[] th = new Thread[PATHS.length];
         for (int i = 0; i < PATHS.length; i++) {
+            final int li = i;
+            th[i] = new Thread(new Runnable() { public void run() { fetchLeague(li, favs, now, out, seen, ok); } });
+            th[i].start();
+        }
+        for (int i = 0; i < th.length; i++) {
+            try { th[i].join(30000); } catch (InterruptedException ignored) { }
+        }
+        synchronized (out) {
+            if (ok[0] == 0) return null;
+            List<Game> res = new ArrayList<Game>(out);
+            Collections.sort(res, new Comparator<Game>() {
+                public int compare(Game a, Game b) {
+                    boolean la = "in".equals(a.state), lb = "in".equals(b.state);
+                    if (la != lb) return la ? -1 : 1;
+                    return a.startMs < b.startMs ? -1 : (a.startMs > b.startMs ? 1 : 0);
+                }
+            });
+            return res;
+        }
+    }
+
+    /** Un championnat : le tableau du jour (matchs en direct inclus) + chaque jour de hier a J+3. */
+    static void fetchLeague(int li, List<String> favs, long now, List<Game> out, Set<String> seen, int[] ok) {
+        SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd", Locale.US);
+        df.setTimeZone(TimeZone.getTimeZone("America/New_York"));
+        String base = "https://site.api.espn.com/apis/site/v2/sports/" + PATHS[li] + "/scoreboard";
+        List<String> urls = new ArrayList<String>();
+        urls.add(base);
+        for (int d = -1; d <= 3; d++) urls.add(base + "?dates=" + df.format(new Date(now + d * 86400000L)));
+        for (int u = 0; u < urls.size(); u++) {
             try {
-                String base = "https://site.api.espn.com/apis/site/v2/sports/" + PATHS[i] + "/scoreboard";
-                String body;
-                try { body = get(base + "?limit=100&dates=" + range); }
-                catch (Throwable t1) { lastErr = String.valueOf(t1.getMessage()); body = get(base); }
+                String body = get(urls.get(u));
                 JSONArray ev = new JSONObject(body).optJSONArray("events");
-                ok++;
+                synchronized (out) { ok[0]++; }
                 if (ev == null) continue;
                 for (int k = 0; k < ev.length(); k++) {
                     try {
-                        Game g = parse(ev.getJSONObject(k), i);
+                        Game g = parse(ev.getJSONObject(k), li);
                         if (g == null) continue;
-                        if ("post".equals(g.state) && now - g.startMs > 4 * 3600000L) continue;   // vieux resultats
-                        g.interest = interest(g, favs, now);
-                        out.add(g);
+                        if ("post".equals(g.state) && now - g.startMs > 8 * 3600000L) continue;   // vieux resultats
+                        synchronized (out) {
+                            if (!seen.add(g.id)) continue;
+                            g.interest = interest(g, favs, now);
+                            out.add(g);
+                        }
                     } catch (Throwable ignored) { }
                 }
             } catch (Throwable t) { lastErr = t.getClass().getSimpleName() + " " + t.getMessage(); }
         }
-        if (ok == 0) return null;
-        Collections.sort(out, new Comparator<Game>() {
-            public int compare(Game a, Game b) {
-                boolean la = "in".equals(a.state), lb = "in".equals(b.state);
-                if (la != lb) return la ? -1 : 1;
-                return a.startMs < b.startMs ? -1 : (a.startMs > b.startMs ? 1 : 0);
-            }
-        });
-        return out;
     }
 
     /** Le match mis en avant sur l'affiche : en direct d'abord, sinon le plus "interessant". */
@@ -122,6 +145,7 @@ public class Sports {
         if (cs == null || cs.length() < 2) return null;
         Game g = new Game();
         g.leagueIdx = li; g.league = LABELS[li];
+        g.id = li + ":" + e.optString("id", "");
         g.startMs = parseDate(e.optString("date", c.optString("date", "")));
         if (g.startMs == 0) return null;
         JSONObject st = e.optJSONObject("status");
