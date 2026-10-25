@@ -57,7 +57,7 @@ public class SportsView extends View {
     }
 
     void setOffline() {
-        if (games.isEmpty()) { status = fr ? "Matchs indisponibles (hors ligne)" : "Matches unavailable (offline)"; invalidate(); }
+        if (games.isEmpty()) { status = (fr ? "Matchs indisponibles" : "Matches unavailable") + "|" + Sports.lastErr; invalidate(); }
     }
 
     // ------------------------------------------------------------------ dessin
@@ -67,13 +67,19 @@ public class SportsView extends View {
         if (w <= 0 || h <= 0) return;
         c.save();
         c.clipRect(0, 0, w, h);
-        glass.setBounds((int) (-60 * d), 0, w, h);   // coins gauches hors ecran : bandeau colle au bord
+        glass.setBounds(0, 0, w, h);   // coins gauches hors ecran : bandeau colle au bord
         glass.draw(c);
         c.restore();
 
         if (featured == null) {
             tp.setShader(null); tp.setTypeface(fReg); tp.setColor(0xCCFFFFFF); tp.setTextSize(22 * d); tp.setTextAlign(Paint.Align.CENTER);
-            c.drawText(status, w / 2f, 170 * d, tp);
+            String[] parts = status.split("\\|", 2);
+            c.drawText(parts[0], w / 2f, 170 * d, tp);
+            if (parts.length > 1 && parts[1].length() > 0) {
+                tp.setTextSize(12 * d); tp.setColor(0x99FFFFFF);
+                String e = parts[1]; if (e.length() > 44) e = e.substring(0, 44);
+                c.drawText(e, w / 2f, 200 * d, tp);
+            }
             return;
         }
         drawPoster(c, featured);

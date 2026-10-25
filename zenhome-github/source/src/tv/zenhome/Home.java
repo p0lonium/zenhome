@@ -107,7 +107,7 @@ public class Home extends Activity {
     List<String> walls = new ArrayList<>();
     boolean wallsFromFiles = false;
     int wallIdx = 0;
-    LinearLayout dock;
+    LinearLayout dock, topBar;
     final List<View> overlays = new ArrayList<>();   // menus / listes ouverts (pile)
     Typeface fReg, fMed, fLight;
     float density;
@@ -173,14 +173,16 @@ public class Home extends Activity {
         // Bandeau sport colle a gauche (donnees : voir netTick)
         if (sportsOn) {
             sportsView = new SportsView(this, density, fr, fReg, fMed);
-            root.addView(sportsView, new FrameLayout.LayoutParams(dp(leftInset), -1, Gravity.START));
+            FrameLayout.LayoutParams lpSp = new FrameLayout.LayoutParams(dp(360), -1, Gravity.START);
+            lpSp.setMargins(dp(28), dp(28), 0, dp(28));
+            root.addView(sportsView, lpSp);
         }
 
         // Titre
         titleView = text("", 26, fMed, 0xFFFFFFFF);
         titleView.setSingleLine(true);
         titleView.setEllipsize(TextUtils.TruncateAt.END);
-        titleView.setMaxWidth(dp(820));
+        titleView.setMaxWidth(dp(320));
         FrameLayout.LayoutParams lpT = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START);
         lpT.setMargins(dp(56 + leftInset), dp(38), 0, 0);
         root.addView(titleView, lpT);
@@ -200,8 +202,8 @@ public class Home extends Activity {
         // Meteo sur 7 jours, entre la date et le dock
         if (weatherOn) {
             weatherView = new WeatherView(this, density, fr, fReg, fMed);
-            FrameLayout.LayoutParams lpW = new FrameLayout.LayoutParams(dp(788), dp(134), Gravity.TOP | Gravity.START);
-            lpW.setMargins(dp(56 + leftInset), dp(272), 0, 0);
+            FrameLayout.LayoutParams lpW = new FrameLayout.LayoutParams(dp(640), dp(98), Gravity.TOP | Gravity.START);
+            lpW.setMargins(dp(56 + leftInset), dp(262), 0, 0);
             root.addView(weatherView, lpW);
         }
 
@@ -210,8 +212,11 @@ public class Home extends Activity {
         hintView.setBackground(new Glass(dp(16), 0x8C101216, Math.max(1, dp(0.75f))));
         hintView.setPadding(dp(16), dp(8), dp(16), dp(8));
         hintView.setVisibility(View.GONE);
-        FrameLayout.LayoutParams lpH = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        lpH.setMargins(dp(leftInset), 0, 0, dp(layoutHint()));
+        final int gDock = sportsOn ? (Gravity.BOTTOM | Gravity.START) : (Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        final int mDock = sportsOn ? dp(leftInset + 56) : dp(leftInset);
+        final int mSub = sportsOn ? dp(18) : 0;
+        FrameLayout.LayoutParams lpH = new FrameLayout.LayoutParams(-2, -2, gDock);
+        lpH.setMargins(mDock + mSub, 0, dp(28), dp(layoutHint()));
         root.addView(hintView, lpH);
 
         // Dock
@@ -220,8 +225,8 @@ public class Home extends Activity {
         dock.setGravity(Gravity.CENTER_VERTICAL);
         dock.setClipChildren(false); dock.setClipToPadding(false);
         dock.setBackground(new Glass(dp(32), 0x26FFFFFF, Math.max(1, dp(1))));
-        FrameLayout.LayoutParams lpD = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        lpD.setMargins(dp(leftInset), 0, 0, dp(46));
+        FrameLayout.LayoutParams lpD = new FrameLayout.LayoutParams(-2, -2, gDock);
+        lpD.setMargins(mDock, 0, dp(28), dp(46));
         root.addView(dock, lpD);
 
         // Bouton « Modifier l'accueil », juste au-dessus du dock (flèche Haut) : marche avec toutes les
@@ -238,9 +243,18 @@ public class Home extends Activity {
             editBtn.setShadowLayer(has ? 0 : dp(4), 0, has ? 0 : dp(1), 0x80000000);
         } });
         editBtn.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { startEdit(); } });
-        FrameLayout.LayoutParams lpE = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        lpE.setMargins(dp(leftInset), 0, 0, dp(layoutHint()));
+        FrameLayout.LayoutParams lpE = new FrameLayout.LayoutParams(-2, -2, gDock);
+        lpE.setMargins(mDock + mSub, 0, dp(28), dp(layoutHint()));
         root.addView(editBtn, lpE);
+
+        // Raccourcis en haut a droite : Play Store, Entrees TV, Toutes les applis, Reglages
+        topBar = new LinearLayout(this);
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
+        topBar.setGravity(Gravity.CENTER_VERTICAL);
+        topBar.setClipChildren(false); topBar.setClipToPadding(false);
+        FrameLayout.LayoutParams lpTop = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
+        lpTop.setMargins(0, dp(30), dp(28), 0);
+        root.addView(topBar, lpTop);
 
         buildDock(0);
 
@@ -282,7 +296,7 @@ public class Home extends Activity {
         favs.clear();
         String fv = setting("zenhome_fav");
         if (fv != null) for (String x : fv.split(",")) { x = x.trim().toLowerCase(Locale.ROOT); if (x.length() > 0) favs.add(x); }
-        leftInset = sportsOn ? 380 : 0;
+        leftInset = sportsOn ? 388 : 0;   // 28 de marge de securite + 360 de bandeau
         if (sportsOn) layout = 8;   // le dock doit tenir a droite du bandeau : 2 rangees de 4
         dockPkgs.clear();
         String csv = prefs.getString("dock", "");
@@ -326,11 +340,11 @@ public class Home extends Activity {
 
     // =====================================================================
     // Dock : grandes tuiles (1 ou 2 rangees) + petites tuiles (Play Store, Entrees, Toutes, Reglages)
-    int bigW() { return layout == 4 ? 176 : 128; }
-    int bigH() { return layout == 4 ? 99 : 72; }
-    int bigM() { return layout == 4 ? 9 : 7; }
-    int smallW() { return layout == 6 ? 64 : 86; }
-    int smallH() { return layout == 6 ? 60 : (layout == 8 ? 72 : 80); }
+    int bigW() { return layout == 4 ? 176 : (layout == 8 ? 136 : 128); }
+    int bigH() { return layout == 4 ? 99 : (layout == 8 ? 76 : 72); }
+    int bigM() { return layout == 4 ? 9 : (layout == 8 ? 6 : 7); }
+    int smallW() { return layout == 6 ? 64 : (layout == 8 ? 76 : 86); }
+    int smallH() { return layout == 6 ? 60 : (layout == 8 ? 65 : 80); }
     int layoutHint() { return layout == 8 ? 266 : (layout == 6 ? 174 : 200); }
 
     void buildDock(int focusIndex) {
@@ -350,29 +364,7 @@ public class Home extends Activity {
         if (dockPkgs.size() < layout) big.addView(addTile());   // case "+" pour ajouter une appli
         dock.addView(big);
 
-        View sep = new View(this); sep.setBackgroundColor(0x4DFFFFFF);
-        LinearLayout.LayoutParams lpS = new LinearLayout.LayoutParams(dp(1.5f), dp(rows == 2 ? 140 : (layout == 6 ? 52 : 64)));
-        lpS.setMargins(dp(layout == 6 ? 10 : 14), 0, dp(layout == 6 ? 10 : 14), 0);
-        dock.addView(sep, lpS);
-
-        GridLayout small = new GridLayout(this);
-        small.setColumnCount(rows == 2 ? 2 : 4);
-        small.setClipChildren(false); small.setClipToPadding(false);
-        if (usable("com.android.vending"))
-            small.addView(smallTile(pkgIcon("com.android.vending"), "Play Store", new Runnable() { public void run() { launch("com.android.vending"); } }));
-        final String[] input = findInput();
-        final ComponentName viewInputs = viewInputsTarget();
-        if (input != null)
-            small.addView(smallTile(pkgIcon(input[0]), t("Entrées TV", "TV inputs"), new Runnable() { public void run() { openInput(input); } }));
-        else if (viewInputs != null)   // projecteurs (XGIMI...) : pas d'appli TV connue, mais le système sait ouvrir les entrées
-            small.addView(smallTile(pkgIcon(viewInputs.getPackageName()), t("Entrées TV", "TV inputs"), new Runnable() { public void run() { openInputs(); } }));
-        small.addView(smallTile(new GridIcon(), t("Toutes", "All apps"), new Runnable() { public void run() { showApps(null); } }));
-        Drawable gear = pkgIcon("com.android.tv.settings");
-        if (gear == null) gear = pkgIcon("com.android.settings");
-        small.addView(smallTile(gear, t("Réglages", "Settings"), new Runnable() { public void run() {
-            try { startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
-            catch (Exception e) { toast(t("Réglages indisponibles", "Settings unavailable")); } } }));
-        dock.addView(small);
+        buildTopBar();
 
         // repositionne l'indication au-dessus du dock
         FrameLayout.LayoutParams lpH = (FrameLayout.LayoutParams) hintView.getLayoutParams();
@@ -384,8 +376,49 @@ public class Home extends Activity {
         }
 
         final View target = (focusIndex >= 0 && focusIndex < bigTiles.size()) ? bigTiles.get(focusIndex)
-                : (bigTiles.isEmpty() ? (big.getChildCount() > 0 ? big.getChildAt(0) : small.getChildAt(0)) : bigTiles.get(bigTiles.size() - 1));
+                : (bigTiles.isEmpty() ? (big.getChildCount() > 0 ? big.getChildAt(0) : null) : bigTiles.get(bigTiles.size() - 1));
         if (target != null) dock.post(new Runnable() { public void run() { target.requestFocus(); } });
+    }
+
+    void buildTopBar() {
+        topBar.removeAllViews();
+        if (usable("com.android.vending"))
+            addPill(pkgIcon("com.android.vending"), "Play Store", new Runnable() { public void run() { launch("com.android.vending"); } });
+        final String[] input = findInput();
+        final ComponentName viewInputs = viewInputsTarget();
+        if (input != null)
+            addPill(pkgIcon(input[0]), t("Entrées TV", "TV inputs"), new Runnable() { public void run() { openInput(input); } });
+        else if (viewInputs != null)
+            addPill(pkgIcon(viewInputs.getPackageName()), t("Entrées TV", "TV inputs"), new Runnable() { public void run() { openInputs(); } });
+        addPill(new GridIcon(), t("Toutes", "All apps"), new Runnable() { public void run() { showApps(null); } });
+        Drawable gear = pkgIcon("com.android.tv.settings");
+        if (gear == null) gear = pkgIcon("com.android.settings");
+        addPill(gear, t("Réglages", "Settings"), new Runnable() { public void run() {
+            try { startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+            catch (Exception e) { toast(t("Réglages indisponibles", "Settings unavailable")); } } });
+    }
+
+    void addPill(Drawable icon, String label, Runnable r) {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.HORIZONTAL);
+        l.setGravity(Gravity.CENTER_VERTICAL);
+        l.setBackground(new Glass(dp(17), 0x2EFFFFFF, Math.max(1, dp(0.75f))));
+        l.setPadding(dp(12), 0, dp(14), 0);
+        if (icon == null) icon = new GridIcon();
+        ImageView iv = new ImageView(this); iv.setImageDrawable(icon);
+        LinearLayout.LayoutParams il = new LinearLayout.LayoutParams(dp(20), dp(20));
+        il.rightMargin = dp(8);
+        l.addView(iv, il);
+        TextView tv = text(label, 13, fMed, 0xFFFFFFFF); tv.setShadowLayer(0, 0, 0, 0);
+        tv.setSingleLine(true);
+        l.addView(tv, new LinearLayout.LayoutParams(-2, -2));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(34));
+        lp.leftMargin = dp(8);
+        l.setLayoutParams(lp);
+        l.setTag(17);
+        l.setContentDescription(label);
+        wire(l, r, 1.08f);
+        topBar.addView(l);
     }
 
     View bigTile(final String pkg, final int index) {
@@ -857,6 +890,7 @@ public class Home extends Activity {
         int n = overlays.size();
         dock.setDescendantFocusability(n == 0 ? ViewGroup.FOCUS_AFTER_DESCENDANTS : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         if (editBtn != null) editBtn.setFocusable(n == 0);
+        if (topBar != null) topBar.setDescendantFocusability(n == 0 ? ViewGroup.FOCUS_AFTER_DESCENDANTS : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         for (int i = 0; i < n; i++) {
             View o = overlays.get(i);
             if (o instanceof ViewGroup)

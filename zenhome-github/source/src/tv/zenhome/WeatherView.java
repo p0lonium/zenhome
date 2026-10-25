@@ -33,7 +33,7 @@ public class WeatherView extends View {
     WeatherView(Context ctx, float density, boolean french, Typeface reg, Typeface med) {
         super(ctx);
         d = density; fr = french; fReg = reg; fMed = med;
-        glass = new Home.Glass(22 * d, 0x24FFFFFF, Math.max(1f, d));
+        glass = new Home.Glass(18 * d, 0x24FFFFFF, Math.max(1f, d));
         setFocusable(false);
     }
 
@@ -68,7 +68,7 @@ public class WeatherView extends View {
         int w = getWidth(), h = getHeight();
         if (days == null || w <= 0) return;
         int n = days.length;
-        float gap = 10 * d, tw = (w - gap * (n - 1)) / n;
+        float gap = 8 * d, tw = (w - gap * (n - 1)) / n;
         for (int i = 0; i < n; i++) {
             float x = i * (tw + gap), cx = x + tw / 2f;
             glass.setBounds((int) x, 0, (int) (x + tw), h);
@@ -78,13 +78,13 @@ public class WeatherView extends View {
             if (lbl.endsWith(".")) lbl = lbl.substring(0, lbl.length() - 1);
             if (lbl.length() > 0) lbl = lbl.substring(0, 1).toUpperCase(Locale.getDefault()) + lbl.substring(1);
             tp.setShader(null); tp.setTextAlign(Paint.Align.CENTER);
-            tp.setTypeface(fMed); tp.setTextSize(20 * d); tp.setColor(0xE6FFFFFF);
-            c.drawText(lbl, cx, 32 * d, tp);
-            icon(c, days[i].code, cx, 68 * d, 46 * d);
-            tp.setTextSize(26 * d); tp.setColor(0xFFFFFFFF);
-            c.drawText(days[i].max + "°", cx, 106 * d, tp);
-            tp.setTypeface(fReg); tp.setTextSize(21 * d); tp.setColor(0x99FFFFFF);
-            c.drawText(days[i].min + "°", cx, 129 * d, tp);
+            tp.setTypeface(fMed); tp.setTextSize(15 * d); tp.setColor(0xE6FFFFFF);
+            c.drawText(lbl, cx, 22 * d, tp);
+            icon(c, days[i].code, cx, 44 * d, 32 * d);
+            tp.setTextSize(19 * d); tp.setColor(0xFFFFFFFF);
+            c.drawText(days[i].max + "°", cx, 73 * d, tp);
+            tp.setTypeface(fReg); tp.setTextSize(15 * d); tp.setColor(0x99FFFFFF);
+            c.drawText(days[i].min + "°", cx, 91 * d, tp);
         }
     }
 

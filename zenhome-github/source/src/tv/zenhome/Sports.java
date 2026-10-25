@@ -48,6 +48,8 @@ public class Sports {
     static final String[] BIG = {"paris saint", "marseille", "lyon", "monaco", "lille", "liverpool", "manchester", "arsenal",
             "chelsea", "tottenham", "real madrid", "barcelona", "bayern", "lakers", "warriors", "celtics", "knicks", "spurs"};
 
+    public static String lastErr = "";
+
     /** @return la liste triee par date, ou null si AUCUN championnat n'a repondu (hors ligne). */
     public static List<Game> fetch(List<String> favs) {
         List<Game> out = new ArrayList<Game>();
@@ -58,7 +60,10 @@ public class Sports {
         int ok = 0;
         for (int i = 0; i < PATHS.length; i++) {
             try {
-                String body = get("https://site.api.espn.com/apis/site/v2/sports/" + PATHS[i] + "/scoreboard?limit=100&dates=" + range);
+                String base = "https://site.api.espn.com/apis/site/v2/sports/" + PATHS[i] + "/scoreboard";
+                String body;
+                try { body = get(base + "?limit=100&dates=" + range); }
+                catch (Throwable t1) { lastErr = String.valueOf(t1.getMessage()); body = get(base); }
                 JSONArray ev = new JSONObject(body).optJSONArray("events");
                 ok++;
                 if (ev == null) continue;
@@ -71,7 +76,7 @@ public class Sports {
                         out.add(g);
                     } catch (Throwable ignored) { }
                 }
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) { lastErr = t.getClass().getSimpleName() + " " + t.getMessage(); }
         }
         if (ok == 0) return null;
         Collections.sort(out, new Comparator<Game>() {
@@ -177,7 +182,8 @@ public class Sports {
     static String get(String u) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
         c.setConnectTimeout(8000); c.setReadTimeout(10000);
-        c.setRequestProperty("User-Agent", "ZenHome/3.0");
+        c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 9) ZenHome/3.0");
+        c.setRequestProperty("Accept", "application/json");
         try {
             if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
             InputStream in = c.getInputStream();
